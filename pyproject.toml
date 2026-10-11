@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "log-sleuth"
+dynamic = ["version"]
+description = "Find brute-force, scanning and injection attempts in SSH and web server logs."
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "UID0x" }]
+requires-python = ">=3.10"
+dependencies = []
+keywords = ["security", "blue-team", "logs", "ssh", "nginx", "intrusion-detection"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Environment :: Console",
+    "Topic :: Security",
+    "Topic :: System :: Logging",
+]
+
+[project.scripts]
+log-sleuth = "log_sleuth.cli:main"
+
+[project.urls]
+Repository = "https://github.com/UID0x/log-sleuth"
+
+[tool.setuptools.dynamic]
+version = { attr = "log_sleuth.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
