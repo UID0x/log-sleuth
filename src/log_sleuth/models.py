@@ -53,6 +53,8 @@ class Finding:
     last_seen: datetime
     count: int
     evidence: list[str] = field(default_factory=list)
+    # The events behind the finding, used for charts. Not serialised to JSON.
+    events: list[Event] = field(default_factory=list, repr=False, compare=False)
 
 
 @dataclass
@@ -68,6 +70,7 @@ class Report:
     files: list[FileStats]
     findings: list[Finding]
     generated_at: datetime
+    events: list[Event] = field(default_factory=list, repr=False)
 
     @property
     def total_lines(self) -> int:

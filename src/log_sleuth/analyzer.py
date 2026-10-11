@@ -20,4 +20,4 @@ def analyze(paths: list[Path], fmt: str = "auto", year: int | None = None,
         file_events = parse_lines(lines, file_fmt, year, path.name) if file_fmt else []
         stats.append(FileStats(str(path), file_fmt, len(lines), len(file_events)))
         events.extend(file_events)
-    return Report(files=stats, findings=detect(events, thresholds), generated_at=datetime.now())
+    return Report(files=stats, findings=detect(events, thresholds), generated_at=datetime.now(), events=events)

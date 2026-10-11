@@ -29,8 +29,15 @@ Findings  1 critical  4 high  4 medium  1 low
   ...
 ```
 
-It also writes a standalone **HTML report** (light/dark, no external assets) and
-**JSON** for SIEM ingestion or scripting. See [`docs/example-report.html`](docs/example-report.html).
+It also writes **JSON** for SIEM ingestion or scripting, and a standalone
+**interactive HTML report** (single file, works offline, light and dark themes, mobile-friendly) with:
+
+- **Incident reconstruction:** every failed attempt, then the successful login, on a time strip
+- **Activity timeline:** events over time, coloured by the severity attached to their source IP. The attack spikes jump out.
+- **Top offenders:** a threat score per IP, broken down by severity
+- Tooltips, severity filters, and a data table behind every chart
+
+See [`docs/example-report.html`](docs/example-report.html).
 
 ## Quick start
 
@@ -81,7 +88,8 @@ Example cron job that emails you only when something serious happens:
 
 - **Two-pointer sliding window** (`max_in_window`) finds the peak attack rate in O(n), instead of comparing every pair of events.
 - **Parsers and rules are decoupled.** Parsers normalize every format into one `Event` dataclass; rules are plain functions `(events, thresholds) -> findings`. Adding a format or a rule touches one file.
-- **The report is not an attack vector.** Log content is attacker-controlled (paths, User-Agents, usernames). Everything is HTML-escaped and a test asserts that a `<script>` payload from a log stays inert.
+- **Charts without a charting library.** Python emits plain HTML/CSS bars (stacked flexbox columns, percentage heights, "nice" 1-2-5 axis ticks, automatic time buckets). Text stays readable at any width, which an SVG scaled with `viewBox` doesn't do.
+- **The report is not an attack vector.** Log content is attacker-controlled (paths, User-Agents, usernames). Everything is HTML-escaped, tooltips are filled with `textContent` (never `innerHTML`), and tests assert that `<script>` and attribute-breaking payloads from a log stay inert.
 - **Low false-positive bias.** A human typo followed by a successful login is ignored; refused probes for `wp-login.php` stay `low` because every public server receives them.
 - **Year rollover.** Syslog lines have no year: a backwards jump of more than 6 months (December → January) bumps the year.
 - **Synthetic sample data only uses RFC 5737 documentation addresses**, so no real host is accused.
@@ -89,7 +97,7 @@ Example cron job that emails you only when something serious happens:
 ## Development
 
 ```bash
-python -m unittest discover -s tests -v   # 30 tests, ~0.1 s
+python -m unittest discover -s tests -v   # 40 tests, ~0.1 s
 python scripts/generate_samples.py        # regenerate samples/ (deterministic seed)
 ```
 
