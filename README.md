@@ -37,7 +37,7 @@ It also writes **JSON** for SIEM ingestion or scripting, and a standalone
 - **Top offenders:** a threat score per IP, broken down by severity
 - Tooltips, severity filters, and a data table behind every chart
 
-See [`docs/example-report.html`](docs/example-report.html).
+**[See the live example report](https://uid0x.github.io/log-sleuth/example-report.html)** (generated from the bundled synthetic logs).
 
 ## Quick start
 
